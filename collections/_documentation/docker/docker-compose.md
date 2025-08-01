@@ -332,3 +332,53 @@ services:
       - "DATABASE_URL=mysql://kimaiuser:kimaipassword@sqldb/kimai?charset=utf8mb4&serverVersion=8.3.0"
     restart: unless-stopped
 ```
+
+## Synology NAS ARM Archtitecture 
+
+> Impotant: make sure the defined directories for the sql and Kimai container excists. Therefore, create them manually before hand. 
+
+```yml
+version: '3.5'
+services:
+
+  sqldb:
+    image: mysql:latest
+    #volumes:
+    #  - /volume1/docker/Kimai/mysql:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=kimai
+      - MYSQL_USER=kimaiuser
+      - MYSQL_PASSWORD=REPLACE-WITH-CORRECT-PW
+      - MYSQL_ROOT_PASSWORD=REPLACE-WITH-CORRECT-PW
+    ports:
+      - 3399:3306
+    command: --default-storage-engine innodb
+    restart: unless-stopped
+    healthcheck:
+      test: mysqladmin -p$$MYSQL_ROOT_PASSWORD ping -h localhost
+      interval: 20s
+      start_period: 10s
+      timeout: 10s
+      retries: 3
+
+  kimai:
+    image: kimai/kimai2:apache-2.37.0
+    volumes:
+      - /volume1/docker/Kimai/data:/opt/kimai/var/data
+      - /volume1/docker/Kimai/plugins:/opt/kimai/var/plugins
+    ports:
+      - 8001:8001
+    extra_hosts:
+        - "host.docker.internal:host-gateway"
+    environment:
+      - ADMINMAIL=admin@test.com
+      - ADMINPASS=REPLACE-WITH-CORRECT-PW
+      - "DATABASE_URL=mysql://kimaiuser:kimaipassword@host.docker.internal:3399/kimai"
+      - TRUSTED_HOSTS=nginx,localhost,127.0.0.1
+    restart: unless-stopped
+    
+volumes:
+  data:
+  mysql:
+  plugins: 
+```
